@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>谣言粉碎机 · 防艾知识挑战</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0b1020;
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+  }
+  #game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-width: 560px;
+    margin: 0 auto;
+    background: radial-gradient(circle at 50% 0%, #1b2a5e 0%, #0b1020 60%);
+    overflow: hidden;
+  }
+  #hud {
+    position: absolute; top:0; left:0; right:0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px;
+    font-size: 15px;
+    z-index: 10;
+    background: linear-gradient(#0b1020, transparent);
+  }
+  .hud-item { display:flex; align-items:center; gap:6px; }
+  .hud-num { font-size: 22px; font-weight: 700; color:#4fd1ff; }
+  #timerBar {
+    position:absolute; top:0; left:0; height:4px;
+    background: linear-gradient(90deg,#4fd1ff,#8b5cf6);
+    width:100%; transition: width .1s linear;
+    z-index: 11;
+  }
+  .card {
+    position: absolute;
+    left: 50%;
+    width: 88%;
+    max-width: 460px;
+    transform: translateX(-50%);
+    background: linear-gradient(160deg,#1e2a4a,#16203a);
+    border: 1px solid rgba(79,209,255,.35);
+    border-radius: 18px;
+    padding: 18px 18px 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5), 0 0 30px rgba(79,209,255,.12);
+    will-change: top;
+  }
+  .q-level {
+    display:inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    letter-spacing: .5px;
+  }
+  .lv-easy { background: rgba(46,230,168,.15); color:#2ee6a8; }
+  .lv-mid  { background: rgba(79,209,255,.15); color:#4fd1ff; }
+  .lv-hard { background: rgba(255,107,107,.15); color:#ff8a8a; }
+  .q-text {
+    font-size: 16px;
+    line-height: 1.65;
+    margin-bottom: 16px;
+    min-height: 78px;
+  }
+  .buttons { display:flex; gap:12px; }
+  .btn {
+    flex:1;
+    padding: 14px 0;
+    border-radius: 12px;
+    border: none;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .08s, filter .15s;
+    color:#fff;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn-true  { background: linear-gradient(135deg,#12b886,#0ca678); }
+  .btn-false { background: linear-gradient(135deg,#f76707,#e8590c); }
+  #flash {
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 64px; font-weight: 900;
+    opacity:0; pointer-events:none;
+    z-index: 20;
+  }
+  #flash.show { animation: pop .7s ease-out; }
+  @keyframes pop {
+    0% { opacity:.95; transform: scale(.6); }
+    60% { opacity:.95; transform: scale(1.1); }
+    100% { opacity:0; transform: scale(1.4); }
+  }
+  .panel {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding: 28px;
+    text-align:center;
+    background: radial-gradient(circle at 50% 30%, #1b2a5e, #0b1020 70%);
+    z-index: 30;
+  }
+  .panel h1 { font-size: 28px; margin-bottom: 8px; letter-spacing: 1px; }
+  .panel h2 { font-size: 22px; margin-bottom: 14px; }
+  .panel p { font-size: 15px; line-height: 1.8; color:#9fb3d9; margin-bottom: 10px; }
+  .panel .big { font-size: 64px; font-weight: 900; color:#4fd1ff; margin: 14px 0; }
+  .start-btn {
+    margin-top: 26px;
+    padding: 16px 54px;
+    border-radius: 999px;
+    border:none;
+    font-size: 18px; font-weight: 700; color:#06121f;
+    background: linear-gradient(135deg,#4fd1ff,#8b5cf6);
+    cursor:pointer;
+    box-shadow: 0 8px 26px rgba(79,209,255,.35);
+  }
+  .start-btn:active { transform: scale(.97); }
+  .hidden { display: none !important; }
+  .rules { font-size: 13.5px; color:#7f93b8; margin-top: 18px; line-height: 1.9; }
+
+  .form-wrap { width: 100%; max-width: 340px; margin-top: 6px; }
+  .field { margin-bottom: 16px; text-align: left; }
+  .field label {
+    display:block; font-size: 14px; color:#9fb3d9; margin-bottom: 7px;
+  }
+  .field input {
+    width: 100%;
+    padding: 13px 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(79,209,255,.3);
+    background: rgba(255,255,255,.06);
+    color:#fff;
+    font-size: 16px;
+    outline: none;
+    transition: border-color .2s, background .2s;
+  }
+  .field input::placeholder { color:#5f7296; }
+  .field input:focus {
+    border-color:#4fd1ff;
+    background: rgba(79,209,255,.08);
+  }
+  .field input.err { border-color:#ff6b6b; }
+  .errmsg {
+    font-size: 12.5px; color:#ff6b6b; margin-top: 5px;
+    min-height: 16px; opacity: 0; transition: opacity .2s;
+  }
+  .errmsg.show { opacity: 1; }
+  .privacy {
+    font-size: 12px; color:#7f93b8; line-height: 1.7;
+    margin-top: 10px; text-align: left;
+  }
+  .user-tag {
+    position:absolute; bottom: 12px; left: 0; right: 0;
+    text-align:center; font-size: 12px; color:#4a5c80;
+    z-index: 1; pointer-events: none;
+  }
+
+  /* 结算页：可滚动，容纳复盘 */
+  #endPanel {
+    justify-content: flex-start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 36px 22px 40px;
+  }
+  #endPanel > * { flex-shrink: 0; }
+
+  #endUser {
+    width: 100%;
+    max-width: 340px;
+    margin: 4px 0 8px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(79,209,255,.18);
+    font-size: 14px;
+    line-height: 2;
+    color:#9fb3d9;
+    text-align: left;
+  }
+  #endUser b { color:#fff; font-weight: 600; }
+
+  .review-title {
+    width: 100%; max-width: 340px;
+    text-align: left;
+    font-size: 13px; color:#5f7296;
+    letter-spacing: 1px;
+    margin: 24px 0 12px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,.08);
+  }
+  .review-list {
+    width: 100%; max-width: 340px;
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .rv-item {
+    text-align: left;
+    border-radius: 12px;
+    padding: 14px 15px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.06);
+    font-size: 13.5px;
+    line-height: 1.8;
+  }
+  .rv-item.wrong {
+    border-color: rgba(255,107,107,.28);
+    background: rgba(255,107,107,.05);
+  }
+  .rv-head {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .rv-no {
+    font-size: 11px; font-weight: 700;
+    width: 20px; height: 20px; line-height: 20px;
+    text-align: center; border-radius: 6px; flex-shrink: 0;
+  }
+  .rv-no.ok   { background: rgba(46,230,168,.18); color:#2ee6a8; }
+  .rv-no.no   { background: rgba(255,107,107,.18); color:#ff8a8a; }
+  .rv-no.skip { background: rgba(255,212,59,.18); color:#ffd43b; }
+  .rv-state {
+    font-size: 11.5px; font-weight: 600;
+    margin-left: auto; flex-shrink: 0;
+  }
+  .rv-state.ok   { color:#2ee6a8; }
+  .rv-state.no   { color:#ff8a8a; }
+  .rv-state.skip { color:#ffd43b; }
+  .rv-q {
+    color:#e3ecfa;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  .rv-ans {
+    font-size: 12.5px;
+    color:#7f93b8;
+    line-height: 1.8;
+  }
+  .rv-ans .k { color:#5f7296; }
+  .rv-ans .yours-bad { color:#ff8a8a; }
+  .rv-ans .right { color:#2ee6a8; }
+  .rv-tip {
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px dashed rgba(255,255,255,.1);
+    color:#9fb3d9;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .rv-tip b { color:#4fd1ff; }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="timerBar"></div>
+  <div id="hud" class="hidden">
+    <div class="hud-item">第 <span class="hud-num" id="idx">1</span> / 10 题</div>
+    <div class="hud-item">得分 <span class="hud-num" id="score">0</span></div>
+  </div>
+
+  <div id="flash"></div>
+
+  <div class="panel" id="infoPanel">
+    <h1>🔨 谣言粉碎机</h1>
+    <p>请先填写信息，再开始答题</p>
+    <div class="form-wrap">
+      <div class="field">
+        <label for="inpName">姓名</label>
+        <input id="inpName" type="text" placeholder="请输入姓名" maxlength="20" autocomplete="off">
+        <div class="errmsg" id="errName">请输入姓名</div>
+      </div>
+      <div class="field">
+        <label for="inpId">学号</label>
+        <input id="inpId" type="text" placeholder="请输入学号" maxlength="20" inputmode="numeric" autocomplete="off">
+        <div class="errmsg" id="errId">请输入正确的学号（8～20 位数字）</div>
+      </div>
+      <div class="privacy">
+        所收集的姓名与学号仅用于本次活动成绩统计，不作他用。
+      </div>
+    </div>
+    <button class="start-btn" id="toGameBtn">进入游戏</button>
+  </div>
+
+  <div class="panel hidden" id="startPanel">
+    <h1>玩法说明</h1>
+    <p>题目会从上方缓缓掉落<br>在它落到底部之前，判断 <b>正确</b> 或 <b>错误</b></p>
+    <div class="rules">
+      共 10 题 · 每题 1 分 · 答错不扣分<br>
+      每题限时 15 秒，超时自动跳过
+    </div>
+    <button class="start-btn" id="startBtn">开始挑战</button>
+    <div class="user-tag" id="userTag"></div>
+  </div>
+
+  <div class="panel hidden" id="endPanel">
+    <h2 id="endTitle">挑战完成</h2>
+    <div id="endUser"></div>
+    <div class="big"><span id="finalScore">0</span> / 10</div>
+    <p id="endComment"></p>
+    <button class="start-btn" id="againBtn">再来一局</button>
+    <div class="review-title">本次答题复盘</div>
+    <div class="review-list" id="reviewList"></div>
+  </div>
+</div>
+
+<script>
+/* ============ 题库：19 道判断题（按最新版文档） ============ */
+const BANK = [
+  /* ---------- 简单题（6 道） ---------- */
+  { level:'easy',
+    q:"与艾滋病病毒感染者共同进餐、共用餐具会感染艾滋病病毒。",
+    a:false,
+    tip:"HIV不通过消化道传播，共餐、共用餐具无感染风险。" },
+
+  { level:'easy',
+    q:"全程正确使用合格的安全套，可有效降低艾滋病经性途径的传播风险。",
+    a:true,
+    tip:"全程规范使用合格安全套，能阻断体液接触，是经性途径预防艾滋病的核心有效措施。" },
+
+  { level:'easy',
+    q:"蚊虫叮咬会传播艾滋病病毒。",
+    a:false,
+    tip:"1，蚊虫叮咬时，只吸血不吐血；2、蚊虫叮咬时，口器上沾染的血液极少极少，不足以造成感染；3、病毒在蚊虫体内无法繁殖；4，目前尚无流行病学证据。目前在世界范围内尚未发现因蚊子叮咬而感染艾滋病毒的报道,相关研究也没有发现过证据。" },
+
+  { level:'easy',
+    q:"输入被艾滋病病毒污染的未经检测的血液或血制品，存在极高的艾滋病感染风险。",
+    a:true,
+    tip:"血液传播是HIV的重要传播途径，输入被污染的血液/血制品感染概率极高。" },
+
+  { level:'easy',
+    q:"与艾滋病病毒感染者握手、拥抱、共用办公桌椅等日常接触，不会感染艾滋病。",
+    a:true,
+    tip:"日常接触无体液交换，HIV无法通过完整皮肤侵入人体，不存在感染风险。" },
+
+  { level:'easy',
+    q:"感染艾滋病病毒的女性，在怀孕、分娩和哺乳过程中，均存在将病毒传播给胎儿或婴儿的风险。",
+    a:true,
+    tip:"艾滋病可通过宫内感染、产道接触、母乳喂养三条途径实现母婴垂直传播。" },
+
+  /* ---------- 中等题（8 道） ---------- */
+  { level:'mid',
+    q:"发生艾滋病高危暴露后，暴露后阻断（PEP）最好在 2 小时内启动，最迟不应超过 72 小时。",
+    a:true,
+    tip:"阻断药越早服用效果越好，超过72小时，病毒通常已从局部扩散至区域淋巴结，阻断难度显著增加。" },
+
+  { level:'mid',
+    q:"与艾滋病病毒感染者共用牙刷、剃须刀等可能沾染血液的私人物品，存在感染艾滋病的潜在风险。",
+    a:true,
+    tip:"牙刷、剃须刀可能沾染微量血液，若造成皮肤黏膜破损，存在血液传播的潜在风险。" },
+
+  { level:'mid',
+    q:"仅嘴唇轻碰的礼节性亲吻不会传播艾滋病",
+    a:true,
+    tip:"礼节性亲吻，没有体液交换，不会造成感染。" },
+
+  { level:'mid',
+    q:"在性行为中，安全套只要在射精时没有破损，其阻断艾滋病病毒传播的效果就是可靠的。",
+    a:false,
+    tip:"安全套的有效性取决于全程、正确使用，不能仅凭射精时安全套完整无破损来判断。性行为开始前未佩戴、过程中滑脱或出现可见的破裂，都可能导致体液接触，造成传播。" },
+
+  { level:'mid',
+    q:"感染艾滋病病毒的产妇，坚持纯母乳喂养不会增加母婴传播的风险。",
+    a:false,
+    tip:"母乳中含有HIV，母乳喂养存在传播风险；但在母亲接受规范抗病毒治疗、病毒得到有效抑制的前提下，WHO推荐纯母乳喂养6个月并持续至12—24个月，同时进行婴儿预防用药和随访。" },
+
+  { level:'mid',
+    q:"与他人共用注射器静脉吸毒，是艾滋病经血液传播的主要高危行为之一。",
+    a:true,
+    tip:"共用注射器会直接造成血液交叉接触，是艾滋病经血液传播的重要高危行为。" },
+
+  { level:'mid',
+    q:"处于窗口期的艾滋病病毒感染者，虽然抗体检测结果为阴性，但具有传染性。",
+    a:true,
+    tip:"窗口期内感染者体内已有病毒复制，具备传染性，只是抗体检测暂无法检出。" },
+
+  { level:'mid',
+    q:"暴露前预防药物（PrEP）对经性途径感染艾滋病病毒的预防效果，在规范服用的前提下可达到90%以上，但这一效果会随着漏服次数的增加而明显下降。",
+    a:true,
+    tip:"规范服用PrEP可大幅降低经性感染风险，漏服会导致血药浓度不足，保护效果明显下降。" },
+
+  /* ---------- 难题（5 道） ---------- */
+  { level:'hard',
+    q:"在无保护的性行为中，接受式口交不是艾滋病传播的危险行为。",
+    a:false,
+    tip:"无保护性行为中，接受式口交，存在口腔粘膜的破损和精液的侵入，所以是感染艾滋病的高危行为。" },
+
+  { level:'hard',
+    q:"艾滋病病毒在常温干燥的日常环境中，可存活数天并长期保持感染活性。",
+    a:false,
+    tip:"HIV对外界抵抗力弱，干燥会使其快速失活；在灭菌干燥滤纸片上死亡时间约10—20分钟，干燥后的病毒几小时内可失活90%—99%。虽然在吸水材料表面或残留血液中可能存活更久，但日常干燥环境中的HIV无法长期保持感染活性，不具备传播条件。" },
+
+  { level:'hard',
+    q:"与艾滋病病毒感染者共用公共游泳池、公共浴池，存在极低但可证实的艾滋病传播风险。",
+    a:false,
+    tip:"池水会稀释病毒，消毒剂可灭活HIV，不存在足量病毒侵入人体的条件，无传播风险。" },
+
+  { level:'hard',
+    q:"艾滋病暴露后阻断药物需要连续、规范服用满 28 天，才能达到理想的阻断效果。",
+    a:true,
+    tip:"PEP需连续规范服用28天，才能维持有效血药浓度，全程压制病毒复制实现阻断。" },
+
+  { level:'hard',
+    q:"患有梅毒、生殖器疱疹等性传播疾病，会破坏皮肤黏膜屏障，增加经性接触感染艾滋病病毒的风险。",
+    a:true,
+    tip:"性传播疾病会造成皮肤黏膜破损、屏障受损，会大幅提升HIV经性接触的感染概率。" }
+];
+
+/* ============ 参数 ============ */
+const TOTAL_Q   = 10;
+const FALL_TIME = 15000;
+const PICK_PLAN = { easy:2, mid:5, hard:3 };
+
+const game       = document.getElementById('game');
+const timerBar   = document.getElementById('timerBar');
+const hud        = document.getElementById('hud');
+const idxEl      = document.getElementById('idx');
+const scoreEl    = document.getElementById('score');
+const flash      = document.getElementById('flash');
+const infoPanel  = document.getElementById('infoPanel');
+const startPanel = document.getElementById('startPanel');
+const endPanel   = document.getElementById('endPanel');
+
+let queue = [], cursor = 0, score = 0, playing = false;
+let cardEl = null, rafId = null, startTs = 0, answered = false;
+let records = [];
+
+let user = { name:'', sid:'' };
+const inpName = document.getElementById('inpName');
+const inpId   = document.getElementById('inpId');
+const errName = document.getElementById('errName');
+const errId   = document.getElementById('errId');
+const userTag = document.getElementById('userTag');
+
+const LEVEL_LABEL = { easy:'基础', mid:'进阶', hard:'挑战' };
+const LEVEL_CLASS = { easy:'lv-easy', mid:'lv-mid', hard:'lv-hard' };
+
+/* ============ 信息校验 ============ */
+function validateAndSave() {
+  let ok = true;
+  const name = inpName.value.trim();
+  const sid  = inpId.value.trim();
+
+  if (name.length < 2 || name.length > 20) {
+    inpName.classList.add('err');
+    errName.textContent = '姓名需为 2～20 个字符';
+    errName.classList.add('show');
+    ok = false;
+  } else {
+    inpName.classList.remove('err');
+    errName.classList.remove('show');
+  }
+
+  if (!/^\d{8,20}$/.test(sid)) {
+    inpId.classList.add('err');
+    errId.textContent = '请输入正确的学号（8～20 位数字）';
+    errId.classList.add('show');
+    ok = false;
+  } else {
+    inpId.classList.remove('err');
+    errId.classList.remove('show');
+  }
+
+  if (!ok) return false;
+
+  user = { name, sid };
+  try { localStorage.setItem('rumor_user', JSON.stringify(user)); } catch(e) {}
+  userTag.textContent = `当前玩家：${user.name} · ${maskSid(user.sid)}`;
+  return true;
+}
+
+function maskSid(sid) {
+  if (sid.length <= 6) return sid;
+  return sid.slice(0, 4) + '****' + sid.slice(-2);
+}
+
+(function restoreUser() {
+  try {
+    const s = JSON.parse(localStorage.getItem('rumor_user') || 'null');
+    if (s && s.name && s.sid) { inpName.value = s.name; inpId.value = s.sid; }
+  } catch(e) {}
+})();
+
+inpName.addEventListener('input', () => { inpName.classList.remove('err'); errName.classList.remove('show'); });
+inpId.addEventListener('input',   () => { inpId.classList.remove('err');   errId.classList.remove('show'); });
+
+/* ============ 抽题 ============ */
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function pickQuestions(n) {
+  const byLevel = { easy:[], mid:[], hard:[] };
+  BANK.forEach(q => byLevel[q.level].push(q));
+
+  let picked = [];
+  for (const lv of ['easy','mid','hard']) {
+    const pool = shuffle(byLevel[lv]);
+    picked = picked.concat(pool.slice(0, Math.min(PICK_PLAN[lv], pool.length)));
+  }
+
+  if (picked.length < n) {
+    const used = new Set(picked.map(q => q.q));
+    const rest = shuffle(BANK.filter(q => !used.has(q.q)));
+    picked = picked.concat(rest.slice(0, n - picked.length));
+  }
+  return shuffle(picked).slice(0, n);
+}
+
+/* ============ 游戏逻辑 ============ */
+function showFlash(text, color) {
+  flash.textContent = text;
+  flash.style.color = color;
+  flash.classList.remove('show');
+  void flash.offsetWidth;
+  flash.classList.add('show');
+}
+
+function spawnCard(item) {
+  answered = false;
+  cardEl = document.createElement('div');
+  cardEl.className = 'card';
+  cardEl.innerHTML = `
+    <div class="q-level ${LEVEL_CLASS[item.level]}">${LEVEL_LABEL[item.level]}</div>
+    <div class="q-text">${item.q}</div>
+    <div class="buttons">
+      <button class="btn btn-true">✓ 正确</button>
+      <button class="btn btn-false">✗ 错误</button>
+    </div>`;
+  cardEl.style.top = '-280px';
+  game.appendChild(cardEl);
+
+  cardEl.querySelector('.btn-true').addEventListener('click',  e => { e.stopPropagation(); answer(true, item); });
+  cardEl.querySelector('.btn-false').addEventListener('click', e => { e.stopPropagation(); answer(false, item); });
+
+  startTs = performance.now();
+  rafId = requestAnimationFrame(tick);
+}
+
+function tick(now) {
+  const elapsed = now - startTs;
+  const p = Math.min(elapsed / FALL_TIME, 1);
+
+  const h = game.clientHeight;
+  const cardH = cardEl.offsetHeight;
+  cardEl.style.top = (-cardH + (h + cardH) * p) + 'px';
+  timerBar.style.width = (100 - p * 100) + '%';
+
+  if (p >= 1) { endRound(null, null); return; }
+  rafId = requestAnimationFrame(tick);
+}
+
+function answer(choice, item) {
+  if (answered) return;
+  answered = true;
+  endRound(choice === item.a, item, choice);
+}
+
+function pushRecord(item, yourChoice, correct) {
+  records.push({
+    q: item.q,
+    level: item.level,
+    a: item.a,
+    your: yourChoice,
+    correct: correct,
+    tip: item.tip
+  });
+}
+
+function endRound(correct, item, yourChoice) {
+  cancelAnimationFrame(rafId);
+
+  if (correct === true) {
+    score++;
+    scoreEl.textContent = score;
+    showFlash('✓ 正确', '#2ee6a8');
+    pushRecord(item, yourChoice, true);
+  } else if (correct === false && item) {
+    showFlash('✗ 错误', '#ff6b6b');
+    pushRecord(item, yourChoice, false);
+    const tip = document.createElement('div');
+    tip.className = 'card';
+    tip.style.cssText = 'top:auto;bottom:70px;max-height:38vh;overflow-y:auto;background:rgba(30,42,74,.97);font-size:13px;line-height:1.7;color:#9fb3d9;z-index:25;';
+    tip.innerHTML = `<b style="color:#4fd1ff">正确答案：${item.a ? '正确' : '错误'}</b><br>${item.tip}`;
+    game.appendChild(tip);
+    setTimeout(() => tip.remove(), 2600);
+  } else {
+    showFlash('⏰ 超时', '#ffd43b');
+    pushRecord(item, null, false);
+  }
+
+  if (cardEl) {
+    cardEl.style.transition = 'opacity .3s, transform .3s';
+    cardEl.style.opacity = '0';
+    cardEl.style.transform = 'translateX(-50%) translateY(-40px) scale(.92)';
+    const dead = cardEl;
+    setTimeout(() => dead.remove(), 320);
+    cardEl = null;
+  }
+
+  cursor++;
+  setTimeout(nextRound, 800);
+}
+
+function nextRound() {
+  if (cursor >= queue.length) { finish(); return; }
+  idxEl.textContent = cursor + 1;
+  spawnCard(queue[cursor]);
+}
+
+function startGame() {
+  queue = pickQuestions(TOTAL_Q);
+  cursor = 0;
+  score = 0;
+  records = [];
+  playing = true;
+  scoreEl.textContent = 0;
+  idxEl.textContent = 1;
+  timerBar.style.width = '100%';
+  startPanel.classList.add('hidden');
+  endPanel.classList.add('hidden');
+  hud.classList.remove('hidden');
+  nextRound();
+}
+
+/* ============ 结算 + 复盘 ============ */
+function finish() {
+  playing = false;
+  hud.classList.add('hidden');
+  timerBar.style.width = '0%';
+
+  document.getElementById('finalScore').textContent = score;
+
+  document.getElementById('endUser').innerHTML =
+    `<div>答题人：<b>${user.name}</b></div>
+     <div>学　号：<b>${user.sid}</b></div>`;
+
+  const rec = saveResult(score);
+  const best = Number(localStorage.getItem('rumor_best_' + user.sid) || 0);
+
+  let comment = '';
+  if (score >= 9)      comment = '谣言粉碎大师！你的防艾知识非常扎实 🎉';
+  else if (score >= 7) comment = '表现不错，再巩固几个易错点就更稳了 👍';
+  else if (score >= 5) comment = '基础还行，建议重点关注传播途径相关误区 📖';
+  else                 comment = '别灰心，这些谣言值得认真辨析一遍 💪';
+  comment += `（历史最高 ${best} 分）`;
+
+  document.getElementById('endComment').textContent = comment;
+  document.getElementById('endTitle').textContent = '挑战完成';
+
+  renderReview();
+
+  endPanel.classList.remove('hidden');
+  endPanel.scrollTop = 0;
+
+  console.log('本次成绩记录：', rec);
+}
+
+function renderReview() {
+  const box = document.getElementById('reviewList');
+
+  box.innerHTML = records.map((r, i) => {
+    const isTimeout = r.your === null;
+    const stateCls  = r.correct ? 'ok' : (isTimeout ? 'skip' : 'no');
+    const stateTxt  = r.correct ? '答对' : (isTimeout ? '超时' : '答错');
+    const noCls     = r.correct ? 'ok' : (isTimeout ? 'skip' : 'no');
+
+    let yoursHTML;
+    if (isTimeout) {
+      yoursHTML = `<span class="k">你的选择：</span><span class="yours-bad">未作答（超时）</span>`;
+    } else {
+      const yours = r.your ? '正确' : '错误';
+      yoursHTML = r.correct
+        ? `<span class="k">你的选择：</span><span class="right">${yours} ✓</span>`
+        : `<span class="k">你的选择：</span><span class="yours-bad">${yours}</span>`;
+    }
+
+    return `
+      <div class="rv-item ${r.correct ? '' : 'wrong'}">
+        <div class="rv-head">
+          <div class="rv-no ${noCls}">${i + 1}</div>
+          <div style="font-size:11px;color:#5f7296;">${LEVEL_LABEL[r.level]}</div>
+          <div class="rv-state ${stateCls}">${stateTxt}</div>
+        </div>
+        <div class="rv-q">${r.q}</div>
+        <div class="rv-ans">
+          ${yoursHTML}<br>
+          <span class="k">正确答案：</span><span class="right">${r.a ? '正确' : '错误'}</span>
+        </div>
+        <div class="rv-tip"><b>解析：</b>${r.tip}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============ 成绩保存 ============ */
+function saveResult(finalScore) {
+  const record = {
+    name: user.name,
+    sid: user.sid,
+    score: finalScore,
+    total: TOTAL_Q,
+    time: new Date().toLocaleString('zh-CN')
+  };
+
+  try {
+    const list = JSON.parse(localStorage.getItem('rumor_records') || '[]');
+    list.push(record);
+    localStorage.setItem('rumor_records', JSON.stringify(list));
+
+    const bestKey = 'rumor_best_' + user.sid;
+    const best = Number(localStorage.getItem(bestKey) || 0);
+    if (finalScore > best) localStorage.setItem(bestKey, finalScore);
+  } catch(e) {}
+
+  submitToServer(record);
+  return record;
+}
+
+function submitToServer(record) {
+  // fetch('https://你的接口地址/api/score', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify(record)
+  // }).catch(() => {});
+}
+
+/* ============ 按钮绑定 ============ */
+document.getElementById('toGameBtn').addEventListener('click', () => {
+  if (!validateAndSave()) return;
+  infoPanel.classList.add('hidden');
+  startPanel.classList.remove('hidden');
+});
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('againBtn').addEventListener('click', startGame);
+
+inpName.addEventListener('keydown', e => { if (e.key === 'Enter') inpId.focus(); });
+inpId.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('toGameBtn').click();
+});
+
+document.addEventListener('keydown', e => {
+  if (!playing || !cardEl || answered) return;
+  const item = queue[cursor];
+  if (e.key === '1' || e.key === 'ArrowLeft')  answer(true, item);
+  if (e.key === '0' || e.key === 'ArrowRight') answer(false, item);
+});
+
+function exportRecords() {
+  const list = JSON.parse(localStorage.getItem('rumor_records') || '[]');
+  const csv = ['姓名,学号,得分,满分,时间']
+    .concat(list.map(r => `${r.name},${r.sid},${r.score},${r.total},${r.time}`))
+    .join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '防艾答题成绩.csv';
+  a.click();
+}
+window.exportRecords = exportRecords;
+</script>
+</body>
+</html>
